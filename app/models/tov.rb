@@ -1,0 +1,2 @@
+class Tov < ApplicationRecord
+end

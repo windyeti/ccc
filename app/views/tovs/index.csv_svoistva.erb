@@ -1,0 +1,3 @@
+<% headers = ['sku', 'title', 'cat', 'cat1', 'p1', 'price', 'pict', 'desc', 'mtitle', 'mdesc', 'mkeyw'] %>
+<%= CSV.generate_line headers %><% @tov_all.each do |p| %><%if p.p2 != nil%><%a = p.p2.split(';') %><% else %><% a = [" "] %><%end%><%if p.p3 != nil%><%b = p.p3.split(';') %><% else %><% b = [" "] %><%end%><%if p.p4 != nil%><%c = p.p4.split(';') %><% else %><% c = [" "] %><%end%><%if a.size > 0 && b.size > 0 && c.size > 0%><%a.each do |aa|%><%b.each do |bb|%><%c.each do |cc|%><%= CSV.generate_line([p.fid, p.title, p.cat, p.cat1, p.oldprice, p.price, p.pict, p.desc, p.p1, aa, bb, cc]).html_safe%><% end %><%end%><%end%><%end%><%end%>
+

@@ -1,0 +1,177 @@
+
+<div class="col-lg-12 col-md-12">
+	<div class="col-lg-2">
+		<h2>Listing Tovs</h2><small>Всего: <%=@tovs.count%></small>
+	</div>
+	<div class="col-lg-2">
+		<%= form_tag import_tovs_path, multipart: true do %>
+		<%= file_field_tag :file %>
+		<%= submit_tag "Import", :class =>'btn btn-default btn-xs'  %></p>
+		<% end %>
+	</div>
+  <div>
+    <%= link_to "СЛУЖБА СОЗДАНИЯ CSV с параметрами", create_csv_with_params_tovs_path, class: "btn-primary btn" %>
+  </div>
+	<div class="col-lg-3">
+		<%=link_to 'Download', download_tovs_path%>
+		<div class="btn-group">
+			<button type="button" class="btn btn-default btn-sm dropdown-toggle" data-toggle="dropdown">
+			<i class="glyphicon glyphicon-list-alt"></i> <span class="caret"></span>
+			</button>
+			<ul class="dropdown-menu">
+			<li><%= link_to 'Файл товары', tovs_path(format: :csv)%></li>
+<!--			<li><%#= link_to 'Файл товары', tovs_path(params.merge(format: "csv")), title: "Файл товары"%></li>-->
+			<li><%= link_to 'Файл товары (param on fly)', csv_param_tovs_path, title: "Файл товары (param on fly)"%><a href="/ins_tov.csv">(Скачать)</a></li>
+			<li><%= link_to 'Файл редиректы', tovs_path(format: "xls", file_type: 'redir'), title: "Файл редиректы"%></li>
+			</ul>
+			<button  id="deleteAllitems" data-delete-url="/tovs/delete_selected" class="btn btn-default btn-sm" style="display: none;">Удалить <i class="glyphicon glyphicon-trash"></i></button>
+		</div>
+	</div>
+	<div class="col-lg-5">
+	<%= search_form_for @search, {class: 'form-inline'}  do |f|%>
+		<div class = "form-group">
+		<%= f.search_field :fid_eq , placeholder: 'fid', class: "form-control input-sm" %>  
+		<%= f.search_field :title_cont_all, placeholder: 'title', class: "form-control input-sm" %> 
+		</div> 
+		<%= f.submit t('search'), class: 'btn btn-default btn-sm' %>
+		<%= link_to "Сбросить", tovs_path, class: 'btn btn-default btn-sm' %>
+	<% end %>
+	</div>
+</div>
+
+<div class="col-md-12">
+	  <div class="table-responsive">
+		<table class="table table-hover table-condensed " >
+		  <thead>
+		    <tr>
+			  <th><%= check_box_tag 'selectAll', value = 'selectAll'%></th>
+<!--		      <th>Check</th>-->
+		      <th>Fid</th>
+		      <th>Link</th>
+		      <th>sku</th>
+		      <th>Title</th>
+		      <th>Sdesc</th>
+		      <th>Desc</th>
+		      <th>OldPrice</th>
+		      <th>Price</th>
+		      <th>Pict</th>
+		      <th>Cat</th>
+		      <th>Cat1</th>
+		      <th>Cat2</th>
+		      <th>Cat3</th>
+		      <th><%=  sort_link(@search, :p1, 'P1')%></th>
+		      <th><%=  sort_link(@search, :p2, 'P2')%></th>
+		      <th>P3</th>
+		      <th>P4</th>
+		      <th>option1</th>
+		      <th>option2</th>
+		      <th>option3</th>
+		      <th>option4</th>
+		      <th>option5</th>
+		      <th>option6</th>
+		      <th>option7</th>
+		      <th>option8</th>
+		      <th>option9</th>
+		      <th>option10</th>
+		      <th>option11</th>
+		      <th>option12</th>
+		      <th>option13</th>
+		      <th>option14</th>
+		      <th>mtitle</th>
+		      <th>mdesc</th>
+		      <th>mkeyw</th>
+		      <th>Linkins</th>
+		      <th>Insid</th>
+		      <th colspan="1"></th>
+		    </tr>
+		  </thead>
+		
+		  <tbody  id="items_table">
+		    <% @tovs.each do |tov| %>
+		      <tr>
+			    <td><%=check_box_tag "tov_ids[]", tov.id%></td>
+<!--		        <td class="price">-->
+<!--							<a href="#"-->
+<!--								 class="tov-editable editable editable-click"-->
+<!--								 data-type="select"-->
+<!--								 data-resource="tov"-->
+<!--								 data-name="check"-->
+<!--								 data-url="/tovs/<%#= tov.id %>"-->
+<!--								 data-original-title="Check"-->
+<!--								 data-source="[{value:'false',text:'Нет'},{value:'true',text:'Да'}]">-->
+									<%#= tov.check %>
+<!--							</a>-->
+<!--						</td>-->
+		        <td><%= tov.fid %></td>
+		        <td><%= link_to truncate(tov.link, length: 17),  tov.link, :target => "_blank" %></td>
+		        <td><%= tov.sku %></td>
+		        <td><%= link_to tov.title , edit_tov_path(tov)%></td>
+		        <td><%= tov.sdesc.at(0..25) if tov.sdesc != nil%></td>
+		        <td><%= tov.desc.at(0..25) if tov.desc != nil%></td>
+		        <td><%= tov.oldprice %></td>
+		        <td><%= tov.price %></td>
+		        <td><%= tov.pict %></td>
+		        <td><%= tov.cat %></td>
+		        <td>
+							<a href="#"
+								 class="tov-editable editable editable-click"
+								 data-type="text"
+								 data-resource="tov"
+								 data-name="cat1"
+								 data-url="/tovs/<%= tov.id %>"
+								 data-original-title="Cat1">
+								<%= tov.cat1 %>
+							</a>
+						</td>
+		        <td><%= tov.cat2 %></td>
+		        <td>
+              <a href="#"
+                 class="tov-editable editable editable-click"
+                 data-type="text"
+                 data-resource="tov"
+                 data-name="cat3"
+                 data-url="/tovs/<%= tov.id %>"
+                 data-original-title="Cat3">
+                <%= tov.cat3 %>
+              </a>
+            </td>
+
+						</td>
+		        <td><%= tov.p1.at(0..50) if tov.p1 != nil %></td>
+		        <td><%= tov.p2 %></td>
+		        <td><%= tov.p3 %></td>
+		        <td><%= tov.p4 %></td>
+		        <td><%= tov.option1 %></td>
+		        <td><%= tov.option2 %></td>
+		        <td><%= tov.option3 %></td>
+		        <td><%= tov.option4 %></td>
+		        <td><%= tov.option5 %></td>
+		        <td><%= tov.option6 %></td>
+		        <td><%= tov.option7 %></td>
+		        <td><%= tov.option8 %></td>
+		        <td><%= tov.option9 %></td>
+		        <td><%= tov.option10 %></td>
+		        <td><%= tov.option11 %></td>
+		        <td><%= tov.option12 %></td>
+		        <td><%= tov.option13 %></td>
+		        <td><%= tov.option14 %></td>
+		        <td><%= tov.mtitle.at(0..25) if tov.mtitle != nil%></td>
+		        <td><%= tov.mdesc.at(0..25) if tov.mdesc != nil%></td>
+		        <td><%= tov.mkeyw.at(0..25) if tov.mkeyw != nil%></td>
+		        <td><%= link_to truncate(tov.linkins, length: 17), tov.linkins.to_s, :target => "_blank" %></td>
+		        <td><%= tov.insid %></td>
+		        <td><%= link_to '<i class="glyphicon glyphicon-trash"></i>'.html_safe,
+														tov,
+														class: 'btn btn-danger btn-sm',
+														method: :delete,
+														data: { confirm: 'Are you sure?' } %>
+						</td>
+		      </tr>
+		    <% end %>
+		  </tbody>
+		</table>
+	</div>
+	<div class="apple_pagination">
+	<%= will_paginate @tovs %>
+	</div>
+</div>

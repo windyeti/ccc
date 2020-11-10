@@ -1,0 +1,2 @@
+<% headers = ['fid', 'Url','Артикул', 'Название товара', 'Краткое описание', 'Полное описание', 'Старая цена', 'Цена продажи', 'Изображения', 'Корневая', 'Подкатегория 1', 'Подкатегория 2', 'Подкатегория 3', 'p1', 'p2', 'p3', 'p4', 'Тег title', 'Мета-тег description', 'Мета-тег keywords'] %><%= CSV.generate_line headers %>
+<% @tov_all.each do |p| %><%= CSV.generate_line([p.fid, p.link, p.sku, p.title, p.sdesc, p.desc, p.oldprice, p.price, p.pict, p.cat, p.cat1, p.cat2, p.cat3, p.p1, p.p2, p.p3, p.p4, p.mtitle, p.mdesc, p.mkeyw]).html_safe%><% end %>
