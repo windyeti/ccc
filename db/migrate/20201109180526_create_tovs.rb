@@ -10,6 +10,7 @@ class CreateTovs < ActiveRecord::Migration[5.2]
       t.string :oldprice
       t.string :price
       t.string :pict
+      t.string :quantity
       t.string :cat
       t.string :cat1
       t.string :cat2

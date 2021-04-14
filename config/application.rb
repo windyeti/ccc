@@ -6,7 +6,7 @@ require 'rails/all'
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
-module Asselina
+module Smart52
   class Application < Rails::Application
 
     Capybara.current_driver = :selenium_chrome

@@ -44,6 +44,7 @@ ActiveRecord::Schema.define(version: 2020_11_09_180526) do
     t.string "oldprice"
     t.string "price"
     t.string "pict"
+    t.string "quantity"
     t.string "cat"
     t.string "cat1"
     t.string "cat2"

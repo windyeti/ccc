@@ -9,6 +9,7 @@ class Services::CreateCsvWithParams
     desc: 'Полное описание',
     price: 'Цена продажи',
     oldprice: 'Старая цена',
+    quantity: 'Остаток',
     pict: 'Изображения',
     p4: 'Размещение на сайте',
     link: 'Параметр: OLDLINK',
@@ -16,13 +17,10 @@ class Services::CreateCsvWithParams
     cat1: 'Подкатегория 2',
     cat2: 'Подкатегория 3',
     cat3: 'Подкатегория 4',
+    cat4: 'Подкатегория 5',
     mtitle: 'Тег title',
     mdesc: 'Мета-тег description',
-    mkeyw: 'Мета-тег keywords',
-    option1: 'Свойство: Размер',
-    option2: 'Свойство: Капюшон',
-    option3: 'Свойство: Возраст',
-    option4: 'Свойство: Декоративные элементы'
+    mkeyw: 'Мета-тег keywords'
   }.freeze
 
     def self.call

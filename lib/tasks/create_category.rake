@@ -5,54 +5,36 @@ namespace :parsing do
       File.delete(file)
     end
 
-    parent_id = '16356602'
-    url_source = Rails.application.credentials[:shop][:old_domain]
-    selector_top_level = '.main-catalog .item'
-    selector_other_level = '.catalog-category-grid a'
+    parent_id = '18471481'
 
-    pp structure = category_structure(
-                                      url_source,
-                                      {name: 'Luxury baby', category_path: 'Каталог/Luxury baby'},
-                                      selector_top_level,
-                                      selector_other_level,
-                                      true
-                                      )
-    # File.write("#{Rails.root}/public/my_structure.txt", structure)
-    #
-    # create_category(structure, parent_id, "Каталог")
+    create_category(Category.first, parent_id)
   end
 
-  def create_category(parent_category, parent_id, parent_category_path)
+  def create_category(parent_category, parent_id)
 
-    if parent_category_path != "Каталог"
-      name = parent_category[:name]
-      link = parent_category[:link]
-      image = parent_category[:image_from_up]
-      # description = parent_category[:description]
-
-      doc_category = get_doc(link)
+    if parent_category.name != "Каталог"
       p data = {
-        "title": name,
+        "title": parent_category.name,
         "parent_id": parent_id,
-        "html_title": doc_category.at_css('title').text.strip,
-        "meta_description": doc_category.at_css('meta[name="description"]') ? doc_category.at_css('meta[name="description"]')['content'] : nil,
-        "meta_keywords": doc_category.at_css('meta[name="keywords"]') ? doc_category.at_css('meta[name="keywords"]')['content'] : nil,
-        "description": doc_category.at('.text-description') ? doc_category.at('.text-description').inner_html : nil,
-        "seo_description": nil,
+        "html_title": parent_category.mtitle,
+        "meta_description": parent_category.mdesc,
+        "meta_keywords": parent_category.mkeywords,
+        "description": parent_category.description,
+        "seo_description": parent_category.sdesc,
         "image_attributes": {
-          "src": image,
+          "src": parent_category.image_from_up,
         }
       }
 
       response = api_create_category(data)
       parent_id = response['id']
-      api_create_redirect(link, response['url'])
+      api_create_redirect(parent_category.link, response['url'])
+    else
+      api_create_redirect(parent_category.link, "http://myshop-ble273.myinsales.ru/collection/all")
     end
 
-    parent_category[:children].each do |category|
-      path_current_category = "#{parent_category_path}/#{category[:name]}"
-
-      create_category(category, parent_id, path_current_category)
+    parent_category.subordinates.each do |category|
+      create_category(category, parent_id)
     end
   end
 
