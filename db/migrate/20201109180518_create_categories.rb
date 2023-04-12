@@ -4,6 +4,7 @@ class CreateCategories < ActiveRecord::Migration[5.2]
       t.references :boss, index: true
       t.string :name
       t.string :link
+      t.string :url
       t.text :category_path
       t.string :image_from_up
       t.text :description_from_up

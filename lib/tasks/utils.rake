@@ -23,7 +23,15 @@ namespace :parsing do
     url = "#{Rails.application.credentials[:shop][:old_domain]}#{url}" unless url[/http|https/]
     p url = URI.encode(url)
 
-    doc = get_doc url
+    if data_category_from_up[:doc_sub].present?
+      doc = data_category_from_up[:doc_sub]
+    else
+      doc = get_doc url
+    end
+
+    doc_cat = get_doc url
+    desc = get_desc(doc_cat.at(".XYZ"))
+    sdesc = get_desc(doc_cat.at(".XYZ"))
 
     selector = current_top_level ? selector_top_level : selector_other_level
 
@@ -33,11 +41,11 @@ namespace :parsing do
       image_from_up: data_category_from_up[:image].nil? ? nil : data_category_from_up[:image],
       image: nil,
       description_from_up: data_category_from_up[:description].nil? ? nil : data_category_from_up[:description],
-      description: doc.at('.ty-mainbox-body .ty-wysiwyg-content') ? doc.at('.ty-mainbox-body .ty-wysiwyg-content').inner_html : nil,
-      sdesc: nil,
-      mtitle: doc.at('title').text.strip,
-      mdesc:  doc.at('meta[name="description"]') ? doc.at('meta[name="description"]')['content'] : nil,
-      mkeywords: doc.at('meta[name="keywords"]') ? doc.at('meta[name="keywords"]')['content'] : nil,
+      description: desc,
+      sdesc: sdesc,
+      mtitle: doc_cat.at('title') ? doc_cat.at('title').text.strip : nil,
+      mdesc:  doc_cat.at('meta[name="description"]') ? doc_cat.at('meta[name="description"]')['content'] : nil,
+      mkeywords: doc_cat.at('meta[name="keywords"]') ? doc_cat.at('meta[name="keywords"]')['content'] : nil,
       category_path: data_category_from_up[:category_path]
     )
 
@@ -60,11 +68,13 @@ namespace :parsing do
       if current_top_level
         link = doc_subcategory['href']
         image = nil
-        name = doc_subcategory.text.strip
+        name = doc_subcategory.text.strip.gsub("/","&#47;")
+        doc_sub = nil
       else
         link = doc_subcategory['href']
-        image = doc_subcategory.at('img') ? doc_subcategory.at('img')['src'] : nil
-        name = doc_subcategory.text.strip
+        image = doc_subcategory.at('.catalog-section__img')['src']
+        name = doc_subcategory.text.strip.gsub("/","&#47;")
+        doc_sub = nil
       end
 
       result << {
@@ -72,7 +82,8 @@ namespace :parsing do
         description: nil,
         image: image,
         name: name,
-        category_path: "#{category_path}/#{name}"
+        category_path: "#{category_path}/#{name}",
+        doc_sub: doc_sub
       }
     end
     result
@@ -107,76 +118,32 @@ namespace :parsing do
     list_options_name
   end
 
-  def get_skus(link)
-    skus = []
-    doc = get_doc(link)
-    price = doc.at('.price h2').text.strip.gsub(' ', '').gsub('р.', '').to_i
-    old_price = doc.at('.price > span').text.strip.gsub(' ', '').gsub('р.', '').to_i
+  def get_title(title)
+    tov = Tov.find_by(title: title)
 
-    script = doc.css('script').find do |script|
-      script.text.include?('var poip_images = ')
+    if tov.present?
+      count = 1
+      loop do
+        title = "#{title.gsub(/__\d+$/,'')}__#{count}"
+        break if Tov.find_by(title: title).nil?
+        count += 1
+      end
     end
-    json = script.text.gsub(":null", ': " "').split('poip_images = ')[1].split("var poip_product_option_ids")[0].strip.split('var poip_images_by_options = ')
-    options_color_one = eval(json[1])
-    options_color_zero = eval(json[0])
-    File.write("#{Rails.public_path}/json_0.txt", options_color_zero)
-    File.write("#{Rails.public_path}/json_1.txt", options_color_one)
+    title
+  end
 
-    doc_options_container = doc.css('#product .options .form-group')
-
-    doc_options_container.each do |doc_option_container|
-      name_option = doc_option_container.at('label').text.strip
-      options = doc_option_container.css('option').reject do |option|
-        option['value'].blank?
-      end
-
-      array_option = []
-
-      if options.size == 1 && options.first.text.match(/\(\+\d*р\.\)/)
-        array_option << {
-          name: name_option,
-          value: 'Стандартный',
-          data_price: 0,
-          price: price,
-          old_price: old_price
-        }
-      end
-
-      if name_option == 'Цвет' || name_option == 'Выберите цвет'
-        options.each do |option|
-          url_image = ''
-          all_url_image = []
-            options_color_zero.each do |option_color_zero|
-              all_url_image << URI.encode(option_color_zero[:popup])
-
-              if option_color_zero[:product_option_value_id]&.include?(option['value'])
-                url_image = URI.encode(option_color_zero[:popup])
-              end
-            end
-
-          array_option << {
-            name: name_option,
-            value: option.text.strip,
-            data_price: option['data-price'].to_i,
-            image: all_url_image.unshift(url_image).uniq.join(' '),
-            price: price,
-            old_price: old_price
-          }
-        end
-      else
-        options.each do |option|
-          array_option << {
-            name: name_option,
-            value: option.text.strip,
-            data_price: option['data-price'].to_i,
-            price: price,
-            old_price: old_price
-          }
-        end
-      end
-      skus << array_option
+  def get_skus(doc)
+    skus = doc.css('select.select.offers-select option').map do |option|
+      fid = option['value']
+      price = option['data-price']
+      size = option.text.gsub(/\(1\s?шт\.\)/, "").split("(").last.gsub(/\(|\)/, "").strip
+      {
+        fid: fid,
+        size: size,
+        price: price,
+      }
     end
-    OBender.new(*skus).vasyuki
+    skus
   end
 
   def get_code
@@ -214,25 +181,56 @@ namespace :parsing do
     result.join(' --- ')
   end
 
-  def get_desc(doc, fid, product_link)
-    doc_desc = doc.at('#content_description')
-    doc_desc.css("img").each do |img|
-      link = img['src'].split('?').first
-      img.attributes["src"].value = create_and_get_url_file(link, fid, product_link)
+  def get_desc(doc_desc)
+    return nil if doc_desc.nil?
+    doc_desc.css("img").each do |doc_img|
+      doc_parent = doc_img.parent
+      doc_parent_href = doc_parent['href']
+      if doc_parent_href.present?
+        doc_parent_href = doc_parent_href.match(/^http/).present? ? doc_parent_href : "#{Rails.application.credentials[:shop][:old_domain]}#{doc_parent_href}"
+        doc_parent.attributes["href"].value = create_and_get_url_file(doc_parent_href)
+      end
+      link = doc_img['src'].split('?').first
+      link = link.match(/^http/).present? ? link : "#{Rails.application.credentials[:shop][:old_domain]}#{link}"
+      doc_img.attributes["src"].value = create_and_get_url_file(link)
+    end
+    doc_desc.css("iframe").each do |doc_iframe|
+      src = doc_iframe.attributes["src"].value
+      doc_iframe.attributes["src"].value = "https:#{src}" unless src.match(/^https:/)
     end
     doc_desc.to_html
   end
 
-  def get_images(doc)
-    if doc.css('.ty-product-block__img-wrapper .ty-product-thumbnails img').size > 0
-      doc.css('.ty-product-block__img-wrapper .ty-product-thumbnails img').map do |image|
-        image['src'].gsub('/thumbnails/35/35','')
-      end.join(' ')
-    elsif doc.at('.ty-product-img .ty-pict')
-      doc.at('.ty-product-img .ty-pict')['src']
-    else
-      nil
+  def get_addition_field_brand(doc)
+    doc_href = doc.at(".product-intro__addition .product-intro__addition-item .product-intro__addition-link")
+    return nil if doc_href.nil?
+
+    begin
+      p link = doc_href['href']
+      p category = Category.find_by(link: link)
+      p url = category.url
+      doc_href.attributes['href'].value = url
+      doc_href.to_html
+    rescue
+      return doc_href.text.strip
     end
+  end
+
+  def get_images(doc)
+    images = []
+    doc_images =  doc.css('.col-sm-5 .product-photo__item')
+    if doc_images.size > 0
+      doc_images.map do |doc_image|
+        images << doc_image['href']
+      end
+    end
+    doc_images =  doc.css('.product-photo__thumb > a')
+    if doc_images.size > 0
+      doc_images.map do |doc_image|
+        images << doc_image['href']
+      end
+    end
+    images.present? ? images.compact.map(&:strip).uniq.join(' ') : nil
   end
 
   def get_quantity(doc)
@@ -240,28 +238,43 @@ namespace :parsing do
     '0' if block.present? && block.text == 'Предзаказ'
   end
 
-  def create_and_get_url_file(link, fid, product_link)
+  def create_and_get_url_file(old_url)
+    new_src = ''
 
     api_key = Rails.application.credentials[:shop][:api_key]
     password = Rails.application.credentials[:shop][:password]
     domain = Rails.application.credentials[:shop][:domain]
 
-    name = link.split('/').last
-    short_name = link.split('/').last.split('.').first
-    ext_name = link.split('/').last.split('.').last
-    p link_name = {
-      name: name,
-      short_name: short_name,
-      ext_name: ext_name,
-      link: link
+    # если уже создавался файл по такой ссылке, возвращаем новыу ссылку
+    image = Image.find_by(old_url: old_url)
+    if image.present?
+      return image.new_url
+    end
+
+    p name = {
+      full_name: old_url.split('/').last,
+      short_name: old_url.split('/').last.split('.').first,
+      ext_name: old_url.split('/').last.split('.').last,
     }
-    new_src = ''
-    data = 	{
-              "file": {
-                "src": link_name[:link],
-                "filename": "#{link_name[:short_name]}__#{Time.now.to_i}.#{link_name[:ext_name]}"
-              }
-            }
+
+    # если по такой ссылке файл не создавался, то проверяем имя содаваемого файла,
+    # и переименовываем в случае существования файла с таким именем
+    name_image = Image.find_by(name: name[:full_name])
+    if name_image.present?
+      data = 	{
+        "file": {
+          "src": old_url,
+          filename: "#{name[:short_name]}_#{Time.now.to_i}.#{name[:ext_name]}"
+        }
+      }
+    else
+      data = 	{
+        "file": {
+          "src": old_url
+        }
+      }
+    end
+
     uri = "http://"+api_key+":"+password+"@"+domain+"/admin/files.json"
 
     RestClient.post( uri, data.to_json, {:content_type => 'application/json', accept: :json}) { |response, request, result, &block|
@@ -271,40 +284,18 @@ namespace :parsing do
         puts 'code 201 - ok'
         resp_data = JSON.parse(response)
         new_src = resp_data['absolute_url']
-        new_src
       when 422
-        p 'code 422 - уже существует'
-        begin
-         get_doc(link_name[:link])
-
-         File.open("#{Rails.public_path}/___error_image___.html", 'w') do |f|
-           f.write "#{link_name[:link]} --- #{product_link}"
-         end
-        rescue
-          p "Нет такой страницы или изображения #{link_name[:link]}"
-          return nil
-        end
-
-        # number_in_request = 250
-        # page = 1
-        # loop do
-        #   list_resp = RestClient.get "http://#{api_key}:#{password}@#{domain}/admin/files.json?page=#{page}&per_page=#{number_in_request}"
-        #   sleep 0.5
-        #   list_data = JSON.parse(list_resp)
-        #
-        #   list_data.each do |ld|
-        #     p check = ld['absolute_url'].split('/').last.split('?').first.gsub(/\.$/,'')
-        #     p link_name[:name].gsub(/\(|\)/, '_')
-        #     new_src = ld['absolute_url'] if check == link_name[:name].gsub(/\(|\)/, '_')
-        #   end
-        #   break if list_data.count < number_in_request || !new_src.empty?
-        #   page += 1
-        # end
+        p 'так быть не должно -------------------------- code 422 - сылка битая'
+        new_src = old_url
       else
         response.return!(&block)
       end
     }
-    # raise if new_src.empty?
+    Image.create(
+           old_url: old_url,
+           new_url: new_src,
+           name: new_src.split("/").last.remove(/\?\d+$/)
+    )
     p new_src
   end
 end

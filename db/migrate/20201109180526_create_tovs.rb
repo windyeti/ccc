@@ -23,6 +23,12 @@ class CreateTovs < ActiveRecord::Migration[5.2]
       t.string :p2
       t.string :p3
       t.string :p4
+
+      t.string :photo_var
+      t.string :uid
+      t.string :p4_admin
+      t.string :video
+
       t.string :option1
       t.string :option2
       t.string :option3

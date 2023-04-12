@@ -4,47 +4,48 @@
 namespace :product do
 
   task start: :environment do
+    @agent = Mechanize.new
     get_category(Category.first)
   end
 
   def get_category(category)
-    category.subordinates.each do |subordinate|
-      path_current_category = subordinate.category_path
-      link = subordinate.link
+    p "GUARD --> #{category.parsing}"
+    p category.name
+    return if category.parsing
 
-      # GUARD
-      p "GUARD --> #{subordinate.parsing}"
-      p subordinate.name
-      next if subordinate.parsing
-
+    category.subordinates.order(:id).each do |subordinate|
       get_category(subordinate)
-
-      Rake::Task['product:get_product_links'].invoke(link, path_current_category)
-      Rake::Task['product:get_product_links'].reenable
-
-      subordinate.update(parsing: true)
     end
+
+    Rake::Task['product:get_product_links'].invoke(category.link, category.category_path)
+    Rake::Task['product:get_product_links'].reenable
+    # category.update(parsing: true)
   end
 
   task :get_product_links, [:category_url, :category_path_name] => :environment do |_t, args|
-    category_url = /\/$/.match(args[:category_url]) ? args[:category_url] : "#{args[:category_url]}/"
+    p category_url = /\/$/.match(args[:category_url]) ? args[:category_url] : "#{args[:category_url]}/"
     category_path_name = args[:category_path_name]
 
-    doc = get_doc(category_url)
+    selector = ".t-store__grid-cont .t-store__card > a"
+    visit category_url
+    sleep 2
 
-    pagination = doc.at('.ty-pagination')
+    button = find(".t-store__load-more-btn") rescue nil
 
-    if pagination
-      number = pagination.css('a').last['data-ca-page'].to_i
-      product_urls = doc.css('.grid-list .ty-grid-list__item .product-title').map {|a| a['href']}
-      (2..number).each do |page|
-        p pagianation_url = "#{category_url}page-#{page}"
-        doc_pagianation = get_doc(pagianation_url)
-        product_urls += doc_pagianation.css('.grid-list .ty-grid-list__item .product-title').map {|a| a['href']}
+    if button.present?
+      loop do
+        button.click
+        sleep 1
+        button = find(".t-store__load-more-btn") rescue nil
+        break if button.nil?
+        p button.text
       end
-    else
-      product_urls = doc.css('.grid-list .ty-grid-list__item .product-title').map {|a| a['href']}
     end
+    product_urls = all(selector).map {|a| a['href']}
+
+# p product_urls
+# p product_urls.count
+# p Category.find_by(category_path: category_path_name).update(amount: product_urls.count)
     Rake::Task['product:get_product'].invoke(product_urls, category_path_name)
     Rake::Task['product:get_product'].reenable
   end
@@ -54,30 +55,18 @@ namespace :product do
     args[:products_urls_in_category].each do |product_link|
 
       p "START <<<< начали собирать данные по продукту #{product_link}"
-      begin
-        doc = get_doc(product_link)
-      rescue
-        p "Нет такой страницы #{product_link}"
-        next
+      fid = product_link
+      tovs = Tov.where(fid: fid)
+
+      if tovs.present?
+        choose_type_update(tovs, product_link, category_path_name)
+      else
+        File.open("#{Rails.public_path}/not_tov.txt","a+") {|f| f.write("#{product_link} ---- ")}
       end
+      p "FINISH <<<< начали собирать данные по продукту #{product_link}"
+      next
 
-      fid = doc.at('.ty-product-block__sku').at('.ty-sku-item')['id'].split('_').last
-
-      tov = Tov.find_by(fid: fid)
-
-        if tov.present?
-          p '==== UPDATE ===='
-          next if tov.p4.split(' ## ').include?(category_path_name)
-          update_product(tov, category_path_name)
-        else
-          data = {
-            product_link: product_link,
-            category_path_name: category_path_name,
-            fid: fid
-          }
-          create_product(data)
-        end
-    p "END <<<< закончили собирать данные на продукт:: #{product_link}"
+      p "END <<<< закончили собирать данные на продукт:: #{product_link}"
     end
     p "Total: #{Tov.count}"
   end
@@ -91,48 +80,54 @@ namespace :product do
   end
 
   def create_product(data)
-    doc = get_doc(data[:product_link])
-
-    title = doc.at('.ty-product-block-title').text.strip
-    desc = get_desc(doc, data[:fid], data[:product_link])
-    price = doc.at('.ty-price-num').text.strip.gsub(' ', '')
-    props = get_props(doc)
-    images = get_images(doc)
-    quantity = get_quantity(doc)
-    categories = data[:category_path_name].split('/')
-    mtitle = doc.at('title').text.strip rescue nil
-    mdesc = doc.at('meta[name="description"]')['content'] rescue nil
-    mkeyw = doc.at('meta[name="keywords"]')['content'] rescue nil
-
-    tov = Tov.new(
-    {
-      fid: data[:fid],
-      sku: nil,
-      title: title,
-      sdesc: nil,
-      desc: desc,
-      price: price,
-      oldprice: nil,
-      pict: images,
-      quantity: quantity,
-      p1: props,
-      p4: data[:category_path_name],
-      link: data[:product_link],
-      cat: categories[1],
-      cat1: categories[2],
-      cat2: categories[3],
-      cat3: categories[4],
-      cat4: categories[5],
-      mtitle: mtitle,
-      mdesc: mdesc,
-      mkeyw: mkeyw
-      }
-    )
+    tov = Tov.new(data)
     if tov.save
-      pp tov
-      p "+++++ создан товар #{tov.fid} -- всего: #{Tov.count}"
     else
       p "!!!!ОШИБКА!!!!! товара #{tov.fid}"
     end
   end
+
+  def choose_type_update(tovs, product_link, category_path_name)
+    if tovs.first.cat.present?
+      update_only_p4(tovs, category_path_name)
+    else
+      update_first_time(tovs, product_link, category_path_name)
+    end
+  end
+
+  def update_only_p4(tovs, category_path_name)
+    tovs.each do |tov|
+      p '==== UPDATE ===='
+      next if tov.p4.split(' ## ').include?(category_path_name)
+      update_product(tov, category_path_name)
+    end
+  end
+
+  def update_first_time(tovs, product_link, category_path_name)
+    begin
+      page = @agent.get(product_link)
+    rescue
+      retry
+    end
+    mtitle = page.at('title').text
+    mdesc = page.at('meta[name="description"]')['content'] rescue nil
+
+    tovs.each do |tov|
+      p '++++++ UPDATE ++++++'
+      categories = category_path_name.split('/')
+      p data = {
+        p4: category_path_name,
+        cat: categories[1],
+        cat1: categories[2],
+        cat2: categories[3],
+        cat3: categories[4],
+        cat4: categories[5],
+        mtitle: mtitle,
+        mdesc: mdesc,
+        check: true
+      }
+      tov.update(data)
+    end
+  end
+
 end

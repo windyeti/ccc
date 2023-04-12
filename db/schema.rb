@@ -10,15 +10,32 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_11_09_180526) do
+ActiveRecord::Schema.define(version: 2023_02_09_015157) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "articles", force: :cascade do |t|
+    t.string "title"
+    t.string "anonce_image"
+    t.string "anonce_text"
+    t.string "anonce_data"
+    t.string "content"
+    t.string "mtitle"
+    t.string "mdesc"
+    t.string "mkeywords"
+    t.string "tags"
+    t.string "insales_link"
+    t.string "article_url"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
 
   create_table "categories", force: :cascade do |t|
     t.bigint "boss_id"
     t.string "name"
     t.string "link"
+    t.string "url"
     t.text "category_path"
     t.string "image_from_up"
     t.text "description_from_up"
@@ -31,7 +48,31 @@ ActiveRecord::Schema.define(version: 2020_11_09_180526) do
     t.boolean "parsing", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "amount"
+    t.integer "parent_id"
     t.index ["boss_id"], name: "index_categories_on_boss_id"
+  end
+
+  create_table "images", force: :cascade do |t|
+    t.string "old_url"
+    t.string "new_url"
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "reviews", force: :cascade do |t|
+    t.string "title"
+    t.string "text"
+    t.string "author"
+    t.string "rating"
+    t.string "date"
+    t.string "date_published"
+    t.string "item_reviewed"
+    t.bigint "tov_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tov_id"], name: "index_reviews_on_tov_id"
   end
 
   create_table "tovs", force: :cascade do |t|
@@ -57,6 +98,10 @@ ActiveRecord::Schema.define(version: 2020_11_09_180526) do
     t.string "p2"
     t.string "p3"
     t.string "p4"
+    t.string "photo_var"
+    t.string "uid"
+    t.string "p4_admin"
+    t.string "video"
     t.string "option1"
     t.string "option2"
     t.string "option3"
@@ -79,4 +124,5 @@ ActiveRecord::Schema.define(version: 2020_11_09_180526) do
     t.datetime "updated_at", null: false
   end
 
+  add_foreign_key "reviews", "tovs"
 end

@@ -18,7 +18,7 @@ namespace :print_category do
             elsif n == 5
               '          '
             end
-    p "#{space}#{category.name}"
+    p "#{space}#{category.name} (#{category.amount})"
     m = n + 1 if category.subordinates.present?
     category.subordinates.each do |subordinate|
       print_category(subordinate, m)

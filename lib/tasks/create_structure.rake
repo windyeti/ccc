@@ -1,8 +1,8 @@
 namespace :parsing do
   task create_structure: :environment do
     url_source = "#{Rails.application.credentials[:shop][:old_domain]}"
-    selector_top_level = '.my_menu .ty-menu__item:not(.visible-phone) .ty-menu__item-link'
-    selector_other_level = '.ty-mainbox-body .ty-subcategories__item a'
+    selector_top_level = '.t-menusub__content .t-menusub__list-item a'
+    selector_other_level = '.ZXC'
 
     create_structure(
       {

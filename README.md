@@ -1,24 +1,18 @@
-# README
+Последовательность команд
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+* r tilda_to_base:create
+из админки тильды создаем товары
 
-Things you may want to cover:
+* создаем структуру
 
-* Ruby version
+* r product:start
+парсим и берем в товары: p4, cat и мета, если не было в админке
 
-* System dependencies
+* r csv:p4_empty
+если в парсинге не было товара из админки, то заполняем p4 из p4_admin (данные из админки)
 
-* Configuration
+* r csv:create
+создаем файл импорта на основе выгрузки из инсайлс и данных парсинга (совмещаем по артикулу)
++ у совпавших update(check: true)
 
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+* из localhost создаем файл импорта все оставшихся товаров (тех, которые не совместились)
